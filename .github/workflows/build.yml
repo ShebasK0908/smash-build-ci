@@ -64,9 +64,9 @@ jobs:
           rm -rf dl
           ls -la
 
-      - name: Build del IPA (idioma del juego - español)
+      - name: Build del IPA (app separada «Smash controles mobiles», idioma del juego - español)
         run: |
-          python3 ~/nxnative/scripts/build_ipa_from_nsp.py ~/Games/Smash -k ~/keys/prod.keys -l es --no-keep-extracted
+          python3 ~/nxnative/scripts/build_ipa_from_nsp.py ~/Games/Smash -k ~/keys/prod.keys -l es --no-keep-extracted --app-name "Smash controles mobiles" --bundle-id org.nxnative.smashcontroles
           ls -la ~/Games/Smash
 
       - name: Subir el resultado a la release privada
@@ -79,4 +79,4 @@ jobs:
           ls -la "$IPA"
           split -b 1900m "$IPA" ipa-part-
           PARTS=$(ls ipa-part-*)
-          gh release create smash-ipa-v2 $PARTS --repo ShebasK0908/smash-build --title "Smash IPA v2 - controles nuevos (privado)" --notes "Build propia del usuario desde su copia, con los controles rediseñados. No compartir." || gh release upload smash-ipa-v2 $PARTS --clobber --repo ShebasK0908/smash-build
+          gh release create smash-ipa-v2 $PARTS --repo ShebasK0908/smash-build --title "Smash controles mobiles (privado)" --notes "App separada de la original: build propia del usuario desde su copia, con los controles bronce de su imagen. La original (smash-ipa) no se toca. No compartir." || gh release upload smash-ipa-v2 $PARTS --clobber --repo ShebasK0908/smash-build
