@@ -30,6 +30,16 @@ jobs:
           rm -rf ~/Library/Android 2>/dev/null || true
           rm -rf ~/Library/Developer/CoreSimulator 2>/dev/null || true
           sudo rm -rf /Applications/GarageBand.app /Applications/iMovie.app /Applications/Keynote.app /Applications/Numbers.app /Applications/Pages.app 2>/dev/null || true
+          for d in /opt/hostedtoolcache/*; do
+            case "$d" in
+              *Python*|*python*|*dotnet*|*DotNet*|*gh*|*GitHub*) echo "mantengo $d" ;;
+              *) echo "borro $d"; sudo rm -rf "$d" ;;
+            esac
+          done
+          for x in /Applications/Xcode_27.2.app /Applications/Xcode_27.2.0.app; do
+            if [ -d "$x" ]; then sudo rm -rf "$x/Contents/Developer/Platforms/WatchOS.platform" "$x/Contents/Developer/Platforms/AppleTVOS.platform" "$x/Contents/Developer/Platforms/XROS.platform" 2>/dev/null || true; fi
+          done
+          rm -rf ~/Library/Caches/* /Library/Caches/* 2>/dev/null || true
           df -h /
 
       - name: Herramientas y nxnative (upstream, al día)
@@ -66,17 +76,46 @@ jobs:
 
       - name: Build del IPA (se instala SOBRE el Smash ya instalado - misma app, conserva la partida; idioma del juego - español)
         run: |
-          python3 ~/nxnative/scripts/build_ipa_from_nsp.py ~/Games/Smash -k ~/keys/prod.keys -l es --no-keep-extracted --bundle-id org.nxnative.01006a800016e000
+          df -h /
+          touch /tmp/build_ipa.log
+          tail -f /tmp/build_ipa.log &
+          TAILPID=$!
+          python3 ~/nxnative/scripts/build_ipa_from_nsp.py ~/Games/Smash -k ~/keys/prod.keys -l es --no-keep-extracted --bundle-id org.nxnative.01006a800016e000 > /tmp/build_ipa.log 2>&1 &
+          BGPID=$!
+          while kill -0 $BGPID 2>/dev/null; do
+            if grep -q "\[3/7\] rewrite" /tmp/build_ipa.log 2>/dev/null; then
+              rm -f ~/Games/Smash/"[01006A800016E000].nsp" ~/Games/Smash/"[01006A800016E800].nsp"
+              echo "NSP liberados tras la extraccion (18.5 GB)"
+              break
+            fi
+            sleep 10
+          done
+          wait $BGPID
+          RC=$?
+          kill $TAILPID 2>/dev/null || true
           ls -la ~/Games/Smash
+          df -h /
+          exit $RC
 
       - name: Subir el resultado a la release privada
         env:
           GH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
         run: |
           cd ~/Games/Smash
+          df -h /
           IPA=$(find . -maxdepth 2 -name '*.ipa' | head -1)
           test -n "$IPA"
           ls -la "$IPA"
-          split -b 1900m "$IPA" ipa-part-
-          PARTS=$(ls ipa-part-*)
-          gh release create smash-ipa-v2 $PARTS --repo ShebasK0908/smash-build --title "Smash controles mobiles (privado)" --notes "Build propia del usuario desde su copia, con los controles bronce de su imagen. Mismo bundle id que su Smash instalado: se instala encima y conserva la partida. La copia de respaldo de la build original sigue en smash-ipa. No compartir." || gh release upload smash-ipa-v2 $PARTS --clobber --repo ShebasK0908/smash-build
+          rm -rf 01006A800016E000_build
+          df -h /
+          gh release create smash-ipa-v2 --repo ShebasK0908/smash-build --title "Smash controles mobiles (privado)" --notes "Build propia del usuario desde su copia, con los controles bronce de su imagen. Mismo bundle id que su Smash instalado: se instala encima y conserva la partida. La copia de respaldo de la build original sigue en smash-ipa. No compartir." || true
+          SIZE=$(stat -f%z "$IPA")
+          N=$(( (SIZE + 1992294400 - 1) / 1992294400 ))
+          i=0
+          while [ $i -lt $N ]; do
+            PART=$(printf 'ipa-part-%02d' $i)
+            dd if="$IPA" of="$PART" bs=1900m skip=$i count=1 2>/dev/null
+            gh release upload smash-ipa-v2 "$PART" --clobber --repo ShebasK0908/smash-build
+            rm -f "$PART"
+            i=$((i + 1))
+          done
