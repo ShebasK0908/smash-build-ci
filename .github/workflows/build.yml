@@ -64,9 +64,9 @@ jobs:
           rm -rf dl
           ls -la
 
-      - name: Build del IPA (app separada «Smash controles mobiles», idioma del juego - español)
+      - name: Build del IPA (se instala SOBRE el Smash ya instalado - misma app, conserva la partida; idioma del juego - español)
         run: |
-          python3 ~/nxnative/scripts/build_ipa_from_nsp.py ~/Games/Smash -k ~/keys/prod.keys -l es --no-keep-extracted --app-name "Smash controles mobiles" --bundle-id org.nxnative.smashcontroles
+          python3 ~/nxnative/scripts/build_ipa_from_nsp.py ~/Games/Smash -k ~/keys/prod.keys -l es --no-keep-extracted --bundle-id org.nxnative.01006a800016e000
           ls -la ~/Games/Smash
 
       - name: Subir el resultado a la release privada
@@ -79,4 +79,4 @@ jobs:
           ls -la "$IPA"
           split -b 1900m "$IPA" ipa-part-
           PARTS=$(ls ipa-part-*)
-          gh release create smash-ipa-v2 $PARTS --repo ShebasK0908/smash-build --title "Smash controles mobiles (privado)" --notes "App separada de la original: build propia del usuario desde su copia, con los controles bronce de su imagen. La original (smash-ipa) no se toca. No compartir." || gh release upload smash-ipa-v2 $PARTS --clobber --repo ShebasK0908/smash-build
+          gh release create smash-ipa-v2 $PARTS --repo ShebasK0908/smash-build --title "Smash controles mobiles (privado)" --notes "Build propia del usuario desde su copia, con los controles bronce de su imagen. Mismo bundle id que su Smash instalado: se instala encima y conserva la partida. La copia de respaldo de la build original sigue en smash-ipa. No compartir." || gh release upload smash-ipa-v2 $PARTS --clobber --repo ShebasK0908/smash-build
