@@ -108,14 +108,14 @@ jobs:
           ls -la "$IPA"
           rm -rf 01006A800016E000_build
           df -h /
-          gh release create smash-ipa-v2 --repo ShebasK0908/smash-build --title "Smash controles mobiles (privado)" --notes "Build propia del usuario desde su copia, con los controles bronce de su imagen. Mismo bundle id que su Smash instalado: se instala encima y conserva la partida. La copia de respaldo de la build original sigue en smash-ipa. No compartir." || true
+          gh release create smash-ipa-v3 --repo ShebasK0908/smash-build --title "Smash controles fabrica transparentes (privado)" --notes "Build propia del usuario desde su copia, con sus controles en el layout 3D con el color y la transparencia de los controles de fabrica de DmIOS (vista previa v12 aprobada); el layout 2D queda con los controles normales de fabrica. Mismo bundle id que su Smash instalado: se instala encima y conserva la partida. Respaldos: build original en smash-ipa y controles bronce en smash-ipa-v2. No compartir." || true
           SIZE=$(stat -f%z "$IPA")
           N=$(( (SIZE + 1992294400 - 1) / 1992294400 ))
           i=0
           while [ $i -lt $N ]; do
             PART=$(printf 'ipa-part-%02d' $i)
             dd if="$IPA" of="$PART" bs=1900m skip=$i count=1 2>/dev/null
-            gh release upload smash-ipa-v2 "$PART" --clobber --repo ShebasK0908/smash-build
+            gh release upload smash-ipa-v3 "$PART" --clobber --repo ShebasK0908/smash-build
             rm -f "$PART"
             i=$((i + 1))
           done

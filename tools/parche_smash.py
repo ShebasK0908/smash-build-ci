@@ -7,10 +7,15 @@ al clon de nxnative antes de compilar):
    mostrarlos, front_ios.m) y fija los ajustes de rendimiento por defecto
    del usuario: DM_OPMODE -> 0 (Portátil) y DM_PRESENT_SNAP -> 1 (buffer de
    fotogramas activado).
-2. Controles táctiles con el diseño bronce del usuario (su imagen de
-   medallones, aprobada en la vista previa v9 el 2026-11-15), SOLO para
-   Smash (DM_GAME_ID 01006A800016E000), dentro de dm/ios/Sources/
-   DmGamepad.m. Los botones son los recortes de su propia imagen, incrustados
+2. Controles táctiles con la disposición de los medallones del usuario
+   (su imagen, aprobada en la vista previa v9 el 2026-11-15) pero con el
+   color y la transparencia de los controles de FÁBRICA de DmIOS (disco
+   oscuro semitransparente, borde fino claro, glifo blanco; vista previa
+   v12 aprobada el 2026-11-16), SOLO en el layout 3D (full): el layout 2D
+   queda con los controles normales de fábrica, sin tocar (smashActive
+   exige _full y todo el arte se oculta fuera de él). SOLO para Smash
+   (DM_GAME_ID 01006A800016E000), dentro de dm/ios/Sources/DmGamepad.m.
+   Los botones son sus medallones convertidos a ese estilo, incrustados
    como capas de arte (sprites en tools/sprites/*.b64):
    - Stick izquierdo con la moneda de base y el pomo que se mueve; cruceta
      de burlas a su derecha, con el arte de la cruz.
@@ -159,8 +164,9 @@ patch("dm/ios/Sources/front_ios.m", [
 ])
 
 # ---------------------------------------------------------------------------
-# Controles bronce para Smash (un solo fichero: DmGamepad.m)
-# Los sprites salen de la imagen del usuario (tools/sprites/*.b64).
+# Controles estilo fabrica transparentes para Smash (un solo fichero:
+# DmGamepad.m). Los sprites salen de los medallones del usuario convertidos
+# al estilo de fabrica (tools/sprites/*.b64).
 # ---------------------------------------------------------------------------
 
 SPRITES_DIR = Path(__file__).resolve().parent / "sprites"
@@ -181,10 +187,12 @@ def img_fn(fn_name, cases, default="nil"):
 
 
 GATE = r'''
-// ---- Controles bronce, solo Smash (build privada del usuario) ----
-// Diseno del usuario (vista previa v9 aprobada el 2026-11-15): los botones
-// son los medallones recortados de su propia imagen, incrustados como capas
-// de arte sobre las teclas. A = ataque, B = especial, X / Y = saltar, cada
+// ---- Controles estilo fabrica, solo Smash (build privada del usuario) ----
+// Disposicion del usuario (vista previa v9 aprobada el 2026-11-15) con el
+// color/transparencia de fabrica de DmIOS (v12 aprobada el 2026-11-16):
+// los botones son sus medallones convertidos a ese estilo, incrustados
+// como capas de arte sobre las teclas. SOLO layout 3D (full); el 2D queda
+// con los controles normales de fabrica. A = ataque, B = especial, X / Y = saltar, cada
 // uno en su sitio (no en diamante); pastillas L / ZL y ZR / R arriba (la ZR
 // de arriba corrige el «ZL» duplicado de su imagen); stick derecho fijo
 // arriba a la derecha; cruceta de burlas con su cruz; zonas extra con el
@@ -213,7 +221,7 @@ GATE += img_fn("smashArtNamed", [
     (0, "dpad"), (1, "lstick"), (2, "rstick"),
 ]) + "\n"
 
-HELPERS = r'''- (BOOL)smashActive { return smashPad() && !_tap && !_layout.separated; }
+HELPERS = r'''- (BOOL)smashActive { return smashPad() && !_tap && !_layout.separated && _full; }
 - (CGPoint)smashFaceCenter:(int)b { CGRect c = _layout.controls; CGFloat x = CGRectGetMinX(c), y = CGRectGetMinY(c), w = c.size.width, h = c.size.height;
     switch (b) { case B_A: return CGPointMake(x + 0.9185 * w, y + 0.801 * h);
         case B_B: return CGPointMake(x + 0.796 * w, y + 0.6545 * h);
@@ -272,7 +280,7 @@ patch(GP, [
     ("static UIColor *k_idle, *k_on, *k_line, *k_ringFill, *k_text, *k_textOn;",
      "static UIColor *k_idle, *k_on, *k_line, *k_ringFill, *k_text, *k_textOn, *k_smashFill, *k_zoneFill;"),
     ("k_ringFill = [UIColor colorWithWhite:1 alpha:0.06];",
-     "k_ringFill = [UIColor colorWithWhite:1 alpha:0.06]; k_smashFill = [UIColor colorWithWhite:0 alpha:0.35]; k_zoneFill = [UIColor colorWithRed:0.45 green:0.30 blue:0.16 alpha:0.35];"),
+     "k_ringFill = [UIColor colorWithWhite:1 alpha:0.06]; k_smashFill = [UIColor colorWithWhite:0 alpha:0.35]; k_zoneFill = [UIColor colorWithWhite:0.05 alpha:0.35];"),
     # gate con los sprites, tras la lista de teclas bloqueadas
     ("static const int k_btns[] = {B_ZL, B_L, B_ZR, B_R, B_MINUS, B_PLUS, B_LS, B_RS};   // keys locked at touch-down (L3 / R3 only in the 3D layout)",
      "static const int k_btns[] = {B_ZL, B_L, B_ZR, B_R, B_MINUS, B_PLUS, B_LS, B_RS};   // keys locked at touch-down (L3 / R3 only in the 3D layout)" + GATE),
@@ -305,15 +313,15 @@ patch(GP, [
             if (names[b]) _label[b] = label(_key[b], names[b]);   // the D-pad arms carry no label
         }
 """ + ART_INIT),
-    # visibilidad: en Smash se ve todo en 2D y 3D, menos L3/R3 (sin uso en el juego)
+    # visibilidad: en Smash los controles personalizados solo en el layout 3D (full), menos L3/R3 (sin uso en el juego); en 2D, todo de fabrica
     ("""    for (int b = 0; b < B_N; b++) _key[b].hidden = _tap || (fullOnly(b) && !_full);
     _ring.hidden = _knob.hidden = _tap;""",
      """    BOOL sm = [self smashActive];
-    for (int b = 0; b < B_N; b++) { _key[b].hidden = _tap || (sm ? (b == B_LS || b == B_RS) : (fullOnly(b) && !_full)); if (_art[b]) _art[b].hidden = _key[b].hidden; }
+    for (int b = 0; b < B_N; b++) { _key[b].hidden = _tap || (sm ? (b == B_LS || b == B_RS) : (fullOnly(b) && !_full)); if (_art[b]) _art[b].hidden = _key[b].hidden || !sm; }
     _ring.hidden = _knob.hidden = _tap;
     _ring2.hidden = _knob2.hidden = _tap || !sm;
     if (_artDpad) _artDpad.hidden = _tap || !sm;
-    if (_artStickL) _artStickL.hidden = _tap;
+    if (_artStickL) _artStickL.hidden = _tap || !sm;
     if (_artStickR) _artStickR.hidden = _tap || !sm;
     for (int z = 0; z < 5; z++) if (_zoneKey[z]) _zoneKey[z].hidden = _tap || !sm;"""),
     # botones de cara en su sitio de la imagen (no en diamante)
@@ -421,4 +429,4 @@ for n, line in enumerate((root / TSV).read_text(encoding="utf-8").split("\n"), 1
     if len(cols) >= 6 and cols[5] not in SECCIONES_OK:
         print(f"ERROR ESTRUCTURAL: {TSV}:{n}: sección no válida: {cols[5]!r}")
         sys.exit(1)
-print("Parche aplicado: lanzador en español + controles bronce para Smash controles mobiles.")
+print("Parche aplicado: lanzador en español + controles estilo fabrica transparentes (solo layout 3D) para Smash.")
